@@ -16,8 +16,16 @@ func main() {
 
 	router := http.NewServeMux()
 
-	router.HandleFunc("GET /short-url/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("hello from get"))
+	router.HandleFunc("GET /short-url/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		body, ok := (urlMappings)[id]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			log.Printf("short url with id %s not found", id)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(body))
 	})
 
 	router.HandleFunc("POST /short-url/", func(w http.ResponseWriter, r *http.Request) {
