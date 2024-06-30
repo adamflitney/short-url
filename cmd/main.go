@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 
@@ -17,29 +16,37 @@ func main() {
 	router := http.NewServeMux()
 
 	router.HandleFunc("GET /short-url/{id}", func(w http.ResponseWriter, r *http.Request) {
+		for k := range urlMappings {
+			log.Print(k)
+		}
+
 		id := r.PathValue("id")
-		body, ok := (urlMappings)[id]
+		url, ok := urlMappings[id]
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
 			log.Printf("short url with id %s not found", id)
 			return
 		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(body))
+		http.Redirect(w, r, url, http.StatusFound)
 	})
 
 	router.HandleFunc("POST /short-url/", func(w http.ResponseWriter, r *http.Request) {
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		newId, err := shortid.Generate()
-		if err != nil {
-			log.Fatalln(err)
-		}
-		urlMappings[newId] = string(body)
 
-		w.Write([]byte(newId))
+		r.ParseForm()
+
+		url := r.Form.Get("url")
+
+		if url != "" {
+			newId, err := shortid.Generate()
+			if err != nil {
+				log.Fatalln(err)
+			}
+			urlMappings[newId] = string(url)
+			w.Write([]byte(newId))
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("Invalid request"))
+		}
 	})
 
 	fs := http.FileServer(http.Dir("./web"))
